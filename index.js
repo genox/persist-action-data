@@ -17,6 +17,7 @@ async function storeData(variable, data){
     writeFileSync(file, data, { encoding: 'utf8' });
     await client.uploadArtifact(variable, [file], process.cwd())
 }
+
 async function loadData(variables){
     var client = artifact.create();
     

@@ -27,7 +27,7 @@ module.exports = {
     },
   ],
   runs: {
-    using: 'node12',
+    using: 'node20',
     main: 'out/index.js',
   },
   usage: {
