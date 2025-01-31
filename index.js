@@ -1,66 +1,67 @@
-const { join } = require('path');
-const { readFileSync, mkdirSync, writeFileSync } = require('fs');
-const core = require('@actions/core');
-const artifact = require('@actions/artifact');
-const rimraf = require('rimraf');
+const { join } = require('path')
+const { readFileSync, mkdirSync, writeFileSync } = require('fs')
+const core = require('@actions/core')
+const rimraf = require('rimraf')
+const { DefaultArtifactClient } = require('@actions/artifact')
 
-const WORKDIR = join(process.cwd(), '_persist_action_dir');
+const WORKDIR = join(process.cwd(), '_persist_action_dir')
 
-async function storeData(variable, data){
-    var client = artifact.create();
-    const file = join(WORKDIR, `${variable}.txt`);
+async function storeData(variable, data) {
+  const client = new DefaultArtifactClient()
+  const file = join(WORKDIR, `${variable}.txt`)
 
-    // cleanup old directories if needed
-    rimraf.sync(WORKDIR);
-    mkdirSync(WORKDIR);
-    
-    writeFileSync(file, data, { encoding: 'utf8' });
-    await client.uploadArtifact(variable, [file], process.cwd())
+  // cleanup old directories if needed
+  rimraf.sync(WORKDIR)
+  mkdirSync(WORKDIR)
+
+  writeFileSync(file, data, { encoding: 'utf8' })
+  await client.uploadArtifact(variable, [file], process.cwd())
 }
 
-async function loadData(variables){
-    var client = artifact.create();
-    
-    // cleanup old directories if needed
-    rimraf.sync(WORKDIR);
-    mkdirSync(WORKDIR);
+async function loadData(variables) {
+  const client = new DefaultArtifactClient()
 
-    for (const v of variables) {
-        let data;
+  // cleanup old directories if needed
+  rimraf.sync(WORKDIR)
+  mkdirSync(WORKDIR)
 
-        try {
-            const file = join(WORKDIR, `${v}.txt`);
-            await client.downloadArtifact(v);
-            data = readFileSync(file, { encoding: 'utf8' }).toString();
-        } catch (error) {
-            core.warning(`Variable ${v} not found`)
-        }
-        core.setOutput(v, data);
-        core.exportVariable(v, data);
-        // store the same data with a fixed prefix so it can be iterated over if needed
-        core.exportVariable(`persist-action-data-${v}`, data);
+  for (const v of variables) {
+    let data
+
+    try {
+      const file = join(WORKDIR, `${v}.txt`)
+      await client.downloadArtifact(v)
+      data = readFileSync(file, { encoding: 'utf8' }).toString()
+    } catch (error) {
+      core.warning(`Variable ${v} not found`)
     }
+    core.setOutput(v, data)
+    core.exportVariable(v, data)
+    // store the same data with a fixed prefix so it can be iterated over if needed
+    core.exportVariable(`persist-action-data-${v}`, data)
+  }
 }
 
-async function runAction(){
-    const inputs = {
-        data: core.getInput('data'),
-        variable: core.getInput('variable'),
-        retrieve: core.getInput('retrieve_variables'),
-    }
+async function runAction() {
+  const inputs = {
+    data: core.getInput('data'),
+    variable: core.getInput('variable'),
+    retrieve: core.getInput('retrieve_variables'),
+  }
 
-    if (inputs.retrieve) {
-        const vars = inputs.retrieve.split(',').map(v=>v.trim());
-        await loadData(vars)
-        return;
-    }
+  if (inputs.retrieve) {
+    const vars = inputs.retrieve.split(',').map((v) => v.trim())
+    await loadData(vars)
+    return
+  }
 
-    await storeData(inputs.variable, inputs.data)
+  await storeData(inputs.variable, inputs.data)
 }
 
-runAction().then(() => {
-    core.info('Action completed successfully');
+runAction()
+  .then(() => {
+    core.info('Action completed successfully')
   })
-  .catch(e => {
-    core.setFailed(e.toString());
-  });
+  .catch((e) => {
+    core.setFailed(e.toString())
+  })
